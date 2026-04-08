@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import type { Booking, SwitchRequest } from '@/types/domain'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() { return new Resend(process.env.RESEND_API_KEY) }
 const FROM = 'school-rooms@yourdomain.com'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -17,7 +17,7 @@ export async function sendBookingConfirmed(booking: Booking): Promise<void> {
   const email = booking.profile?.email
   if (!email) return
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: email,
     subject: 'ההזמנה שלך אושרה',
@@ -34,7 +34,7 @@ export async function sendAdminCanceled(booking: Booking): Promise<void> {
   const email = booking.profile?.email
   if (!email) return
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: email,
     subject: 'ההזמנה שלך בוטלה',
@@ -56,7 +56,7 @@ export async function sendSwitchRequest(
 
   const requesterName = switchRequest.requester_booking?.profile?.full_name ?? 'משתמש'
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: email,
     subject: 'בקשת החלפת חדר',
@@ -83,7 +83,7 @@ export async function sendSwitchApproved(
     emails.map(({ booking, newRoom }) => {
       const email = booking.profile?.email
       if (!email) return Promise.resolve()
-      return resend.emails.send({
+      return getResend().emails.send({
         from: FROM,
         to: email,
         subject: 'החלפת חדר אושרה',
@@ -107,7 +107,7 @@ export async function sendSwitchAutoCanceled(
 
   const requesterName = switchRequest.requester_booking?.profile?.full_name ?? 'המשתמש'
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: email,
     subject: 'בקשת החלפת חדר בוטלה',
