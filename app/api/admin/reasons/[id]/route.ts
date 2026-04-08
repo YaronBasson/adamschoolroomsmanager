@@ -9,9 +9,10 @@ export async function PATCH(
   try {
     await requireAdmin()
     const { id } = await params
-    const body: { name?: string; is_active?: boolean } = await request.json()
+    const body = await request.json()
     const supabase = createServiceClient()
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('booking_reasons')
       .update(body)
       .eq('id', id)
