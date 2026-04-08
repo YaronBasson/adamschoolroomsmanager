@@ -40,8 +40,10 @@ export async function getRoomBookings(
 
 export async function getAllBookingsForDate(date: string): Promise<Booking[]> {
   const supabase = await createClient()
-  const dayStart = `${date}T00:00:00.000Z`
-  const dayEnd = `${date}T23:59:59.999Z`
+  // Use Israel timezone offset — IDT is UTC+3, IST is UTC+2
+  // We query a wide enough window to always cover the full Israel day
+  const dayStart = new Date(`${date}T00:00:00+03:00`).toISOString()
+  const dayEnd = new Date(`${date}T23:59:59+03:00`).toISOString()
   const { data, error } = await supabase
     .from('bookings')
     .select(BOOKING_SELECT)

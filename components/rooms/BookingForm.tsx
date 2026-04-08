@@ -11,12 +11,13 @@ interface BookingFormProps {
 }
 
 export default function BookingForm({ room, defaultStartDate, onClose, onSuccess }: BookingFormProps) {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })
   const [reasons, setReasons] = useState<BookingReason[]>([])
   const [selectedReasonId, setSelectedReasonId] = useState('')
   const [customReason, setCustomReason] = useState('')
-  const [startDate, setStartDate] = useState(defaultStartDate)
+  const [startDate, setStartDate] = useState(defaultStartDate < today ? today : defaultStartDate)
   const [startTime, setStartTime] = useState('08:00')
-  const [endDate, setEndDate] = useState(defaultStartDate)
+  const [endDate, setEndDate] = useState(defaultStartDate < today ? today : defaultStartDate)
   const [endTime, setEndTime] = useState('09:00')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +38,12 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
 
     const start = new Date(`${startDate}T${startTime}:00`)
     const end = new Date(`${endDate}T${endTime}:00`)
+    const now = new Date()
+
+    if (start < now) {
+      setError('לא ניתן להזמין לתאריך או שעה שעברו')
+      return
+    }
 
     if (end <= start) {
       setError('זמן הסיום חייב להיות אחרי זמן ההתחלה')
@@ -94,6 +101,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
                 <input
                   type="date"
                   value={startDate}
+                  min={today}
                   onChange={(e) => handleStartDateChange(e.target.value)}
                   required
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"

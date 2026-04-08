@@ -8,7 +8,7 @@ interface PageProps {
 }
 
 export default async function RoomsPage({ searchParams }: PageProps) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })
   const { date: dateParam } = await searchParams
   const date = dateParam ?? today
 

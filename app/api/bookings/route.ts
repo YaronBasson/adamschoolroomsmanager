@@ -36,6 +36,11 @@ export async function POST(request: Request) {
     // Validate times
     const start = new Date(body.start_time)
     const end = new Date(body.end_time)
+    const now = new Date()
+
+    if (start < now) {
+      return NextResponse.json({ error: 'לא ניתן להזמין לתאריך או שעה שעברו' }, { status: 400 })
+    }
     if (end <= start) {
       return NextResponse.json({ error: 'זמן הסיום חייב להיות אחרי זמן ההתחלה' }, { status: 400 })
     }
