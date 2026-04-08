@@ -55,8 +55,14 @@ export default function Navbar({ profile }: NavbarProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Desktop: name + sign out */}
+            {/* Desktop: name + settings + sign out */}
             <span className="hidden sm:block text-sm text-gray-500">{profile.full_name}</span>
+            <Link
+              href="/settings"
+              className="hidden sm:block text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors"
+            >
+              הגדרות
+            </Link>
             <button
               onClick={handleSignOut}
               className="hidden sm:block text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors"
@@ -101,6 +107,13 @@ export default function Navbar({ profile }: NavbarProps) {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/settings"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              הגדרות
+            </Link>
             <button
               onClick={handleSignOut}
               className="w-full text-right px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
