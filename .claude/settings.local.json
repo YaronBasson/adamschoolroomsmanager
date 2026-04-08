@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe:*)",
+      "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}
