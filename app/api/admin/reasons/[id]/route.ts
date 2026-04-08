@@ -9,7 +9,7 @@ export async function PATCH(
   try {
     await requireAdmin()
     const { id } = await params
-    const body = await request.json()
+    const body: { name?: string; is_active?: boolean } = await request.json()
     const supabase = createServiceClient()
     const { data, error } = await supabase
       .from('booking_reasons')
