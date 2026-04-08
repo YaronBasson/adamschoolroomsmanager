@@ -28,9 +28,10 @@ export async function createClient() {
   )
 }
 
-/** Service-role client for admin operations — server-side only */
-export function createServiceClient() {
-  return createServerClient<Database>(
+/** Service-role client for admin operations — server-side only (untyped to avoid placeholder type issues) */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createServiceClient(): any {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
