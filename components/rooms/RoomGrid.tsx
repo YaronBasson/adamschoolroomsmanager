@@ -34,7 +34,7 @@ export default function RoomGrid({ rooms, bookings, date, currentUserId, isAdmin
   const [minCapacity, setMinCapacity] = useState('')
   const [requiredEquipment, setRequiredEquipment] = useState<string[]>([])
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'free' | 'occupied'>('all')
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(true)
 
   function handleDateChange(newDate: string) {
     setSelectedDate(newDate)
