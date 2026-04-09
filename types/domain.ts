@@ -15,6 +15,7 @@ export interface Room {
   id: string;
   floor: number;
   room_number: string;
+  name: string;
   capacity: number;
   equipment: string[];
   is_active: boolean;
@@ -66,6 +67,7 @@ export interface CreateBookingInput {
 export interface CreateRoomInput {
   floor: number;
   room_number: string;
+  name: string;
   capacity: number;
   equipment: string[];
 }

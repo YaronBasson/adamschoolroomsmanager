@@ -52,6 +52,7 @@ export default function RoomCard({
       <div className="flex items-start justify-between mb-2">
         <div>
           <h3 className="font-bold text-gray-900 text-lg">חדר {room.room_number}</h3>
+          {room.name && <p className="text-sm font-medium text-gray-700">{room.name}</p>}
           <p className="text-sm text-gray-500">קיבולת: {room.capacity} אנשים</p>
         </div>
         <span

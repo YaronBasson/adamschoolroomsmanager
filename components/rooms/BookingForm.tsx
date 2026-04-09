@@ -125,7 +125,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
-            הזמנת חדר {room.room_number}
+            הזמנת חדר {room.room_number}{room.name ? ` — ${room.name}` : ''}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
         </div>

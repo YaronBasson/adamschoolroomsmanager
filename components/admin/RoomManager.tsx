@@ -88,6 +88,7 @@ function EquipmentPicker({ selected, onChange }: EquipmentPickerProps) {
 function RoomForm({ onSave }: { onSave: () => void }) {
   const [floor, setFloor] = useState(1)
   const [roomNumber, setRoomNumber] = useState('')
+  const [name, setName] = useState('')
   const [capacity, setCapacity] = useState(10)
   const [equipment, setEquipment] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -101,7 +102,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
     const res = await fetch('/api/admin/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ floor, room_number: roomNumber, capacity, equipment }),
+      body: JSON.stringify({ floor, room_number: roomNumber, name, capacity, equipment }),
     })
 
     if (!res.ok) {
@@ -113,6 +114,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
 
     setFloor(1)
     setRoomNumber('')
+    setName('')
     setCapacity(10)
     setEquipment([])
     onSave()
@@ -162,6 +164,17 @@ function RoomForm({ onSave }: { onSave: () => void }) {
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">שם החדר</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="למשל: סטודיו, חדר אוריתמיה, ו1'..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
+
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">ציוד</label>
         <EquipmentPicker selected={equipment} onChange={setEquipment} />
       </div>
@@ -179,7 +192,8 @@ function RoomForm({ onSave }: { onSave: () => void }) {
   )
 }
 
-function EquipmentEditor({ room, onSave }: { room: Room; onSave: () => void }) {
+function RoomEditor({ room, onSave }: { room: Room; onSave: () => void }) {
+  const [name, setName] = useState(room.name ?? '')
   const [equipment, setEquipment] = useState<string[]>(room.equipment ?? [])
   const [loading, setLoading] = useState(false)
 
@@ -188,20 +202,32 @@ function EquipmentEditor({ room, onSave }: { room: Room; onSave: () => void }) {
     await fetch(`/api/admin/rooms/${room.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ equipment }),
+      body: JSON.stringify({ name, equipment }),
     })
     setLoading(false)
     onSave()
   }
 
   return (
-    <div className="p-4 bg-gray-50 border-t border-gray-200">
-      <p className="text-xs font-medium text-gray-600 mb-2">ערוך ציוד:</p>
-      <EquipmentPicker selected={equipment} onChange={setEquipment} />
+    <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-3">
+      <div>
+        <p className="text-xs font-medium text-gray-600 mb-1">שם החדר:</p>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="למשל: סטודיו, חדר אוריתמיה..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+      </div>
+      <div>
+        <p className="text-xs font-medium text-gray-600 mb-2">ציוד:</p>
+        <EquipmentPicker selected={equipment} onChange={setEquipment} />
+      </div>
       <button
         onClick={handleSave}
         disabled={loading}
-        className="mt-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
       >
         {loading ? 'שומר...' : 'שמור'}
       </button>
@@ -236,6 +262,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
             <tr>
               <th className="text-right px-4 py-3 font-medium text-gray-700">קומה</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">חדר</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-700">שם</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">קיבולת</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">ציוד</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">סטטוס</th>
@@ -248,6 +275,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                 <tr className={`hover:bg-gray-50 ${!room.is_active ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-3 text-gray-700">{room.floor}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{room.room_number}</td>
+                  <td className="px-4 py-3 text-gray-600">{room.name}</td>
                   <td className="px-4 py-3 text-gray-600">{room.capacity}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1 items-center">
@@ -278,8 +306,8 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                 </tr>
                 {editingEquipmentId === room.id && (
                   <tr>
-                    <td colSpan={6} className="p-0">
-                      <EquipmentEditor room={room} onSave={() => { setEditingEquipmentId(null); router.refresh() }} />
+                    <td colSpan={7} className="p-0">
+                      <RoomEditor room={room} onSave={() => { setEditingEquipmentId(null); router.refresh() }} />
                     </td>
                   </tr>
                 )}
@@ -317,7 +345,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                   onClick={() => setEditingEquipmentId(editingEquipmentId === room.id ? null : room.id)}
                   className="flex-1 text-sm text-brand-600 border border-brand-300 hover:bg-brand-50 py-1.5 rounded-lg transition-colors"
                 >
-                  {editingEquipmentId === room.id ? 'סגור' : 'ערוך ציוד'}
+                  {editingEquipmentId === room.id ? 'סגור' : 'ערוך'}
                 </button>
                 <button onClick={() => handleToggleActive(room)} disabled={togglingId === room.id}
                   className="flex-1 text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 py-1.5 rounded-lg disabled:opacity-50 transition-colors">
@@ -327,7 +355,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
             </div>
             {editingEquipmentId === room.id && (
               <div className="rounded-xl overflow-hidden border border-gray-200">
-                <EquipmentEditor room={room} onSave={() => { setEditingEquipmentId(null); router.refresh() }} />
+                <RoomEditor room={room} onSave={() => { setEditingEquipmentId(null); router.refresh() }} />
               </div>
             )}
           </React.Fragment>
