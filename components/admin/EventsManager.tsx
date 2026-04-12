@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import type { SchoolEvent, EventStatus } from '@/services/events.service'
-import { getEventStatus } from '@/services/events.service'
+import type { SchoolEvent, EventStatus } from '@/lib/school-events'
+import { getEventStatus } from '@/lib/school-events'
 import type { Profile } from '@/types/domain'
 
 const STATUS_COLOR: Record<EventStatus, string> = {
