@@ -57,6 +57,12 @@ export async function getPendingUsers(): Promise<Profile[]> {
   return data ?? []
 }
 
+export async function deleteUser(userId: string): Promise<void> {
+  const supabase = createServiceClient()
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+  if (error) throw error
+}
+
 export async function getAllUsers(): Promise<Profile[]> {
   const supabase = createServiceClient()
   const { data, error } = await supabase

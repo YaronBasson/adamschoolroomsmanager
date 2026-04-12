@@ -12,6 +12,14 @@ export default function UserTable({ users }: UserTableProps) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  async function handleDelete(user: Profile) {
+    if (!confirm(`למחוק את ${user.full_name || user.email}? לא ניתן לבטל פעולה זו.`)) return
+    setLoadingId(user.id)
+    await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+    setLoadingId(null)
+    router.refresh()
+  }
+
   async function handleApprove(userId: string) {
     setLoadingId(userId)
     await fetch(`/api/admin/users/${userId}`, {
@@ -62,10 +70,16 @@ export default function UserTable({ users }: UserTableProps) {
                     <td className="px-4 py-3 text-gray-600">{u.email}</td>
                     <td className="px-4 py-3 text-gray-500">{new Date(u.created_at).toLocaleDateString('he-IL')}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => handleApprove(u.id)} disabled={loadingId === u.id}
-                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-                        {loadingId === u.id ? 'מאשר...' : 'אשר'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleApprove(u.id)} disabled={loadingId === u.id}
+                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                          {loadingId === u.id ? '...' : 'אשר'}
+                        </button>
+                        <button onClick={() => handleDelete(u)} disabled={loadingId === u.id}
+                          className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                          מחק
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -79,10 +93,16 @@ export default function UserTable({ users }: UserTableProps) {
                 <p className="font-semibold text-gray-900">{u.full_name || '—'}</p>
                 <p className="text-sm text-gray-500 mt-0.5">{u.email}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{new Date(u.created_at).toLocaleDateString('he-IL')}</p>
-                <button onClick={() => handleApprove(u.id)} disabled={loadingId === u.id}
-                  className="mt-3 w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors">
-                  {loadingId === u.id ? 'מאשר...' : 'אשר משתמש'}
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => handleApprove(u.id)} disabled={loadingId === u.id}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+                    {loadingId === u.id ? '...' : 'אשר'}
+                  </button>
+                  <button onClick={() => handleDelete(u)} disabled={loadingId === u.id}
+                    className="flex-1 bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 text-sm font-medium py-2 rounded-lg transition-colors">
+                    מחק
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -115,12 +135,18 @@ export default function UserTable({ users }: UserTableProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <select value={u.role} onChange={(e) => handleSetRole(u.id, e.target.value as 'user' | 'admin')}
-                      disabled={loadingId === u.id}
-                      className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50">
-                      <option value="user">משתמש</option>
-                      <option value="admin">מנהל</option>
-                    </select>
+                    <div className="flex gap-2 items-center">
+                      <select value={u.role} onChange={(e) => handleSetRole(u.id, e.target.value as 'user' | 'admin')}
+                        disabled={loadingId === u.id}
+                        className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50">
+                        <option value="user">משתמש</option>
+                        <option value="admin">מנהל</option>
+                      </select>
+                      <button onClick={() => handleDelete(u)} disabled={loadingId === u.id}
+                        className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                        מחק
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -140,7 +166,7 @@ export default function UserTable({ users }: UserTableProps) {
                   {u.role === 'admin' ? 'מנהל' : 'משתמש'}
                 </span>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <label className="text-xs text-gray-500 block mb-1">שינוי תפקיד</label>
                 <select value={u.role} onChange={(e) => handleSetRole(u.id, e.target.value as 'user' | 'admin')}
                   disabled={loadingId === u.id}
@@ -148,6 +174,10 @@ export default function UserTable({ users }: UserTableProps) {
                   <option value="user">משתמש</option>
                   <option value="admin">מנהל</option>
                 </select>
+                <button onClick={() => handleDelete(u)} disabled={loadingId === u.id}
+                  className="w-full bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 text-sm font-medium py-2 rounded-lg transition-colors">
+                  מחק משתמש
+                </button>
               </div>
             </div>
           ))}
