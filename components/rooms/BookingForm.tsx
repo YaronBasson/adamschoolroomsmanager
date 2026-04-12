@@ -22,6 +22,8 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
   const [endDate, setEndDate] = useState(defaultStartDate < today ? today : defaultStartDate)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurringDay, setRecurringDay] = useState<number>(new Date(defaultStartDate).getDay())
 
   // Period selection
   const [schoolType, setSchoolType] = useState<SchoolType>('תיכון')
@@ -93,6 +95,32 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
 
     setLoading(true)
 
+    if (isRecurring) {
+      const body = {
+        room_id: room.id,
+        reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
+        reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
+        day_of_week: recurringDay,
+        start_period: typeof startPeriodNum === 'number' ? startPeriodNum : 1,
+        end_period: typeof endPeriodNum === 'number' ? endPeriodNum : 2,
+        school_type: schoolType,
+        start_date: startDate,
+      }
+      const res = await fetch('/api/recurring-bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? 'שגיאה ביצירת הבקשה')
+        setLoading(false)
+        return
+      }
+      onSuccess()
+      return
+    }
+
     const body = {
       room_id: room.id,
       reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
@@ -151,6 +179,34 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
               </button>
             ))}
           </div>
+
+          {/* Recurring toggle */}
+          <div className="flex items-center gap-3 py-1">
+            <button
+              type="button"
+              onClick={() => setIsRecurring(r => !r)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRecurring ? 'bg-brand-600' : 'bg-gray-200'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRecurring ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-sm text-gray-700">הזמנה חוזרת (כל שבוע)</span>
+          </div>
+
+          {isRecurring && (
+            <div className="bg-brand-50 border border-brand-200 rounded-xl p-3">
+              <p className="text-xs text-brand-700 mb-2 font-medium">הבקשה תישלח לאישור מנהל — לאחר אישור יווצרו הזמנות שבועיות עד סוף שנת הלימודים.</p>
+              <label className="block text-xs font-medium text-gray-600 mb-1">יום בשבוע</label>
+              <select
+                value={recurringDay}
+                onChange={e => setRecurringDay(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                {['ראשון','שני','שלישי','רביעי','חמישי','שישי'].map((name, i) => (
+                  <option key={i} value={i}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Start row */}
           <div className="bg-gray-50 rounded-xl p-3 space-y-2">
@@ -302,7 +358,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
               disabled={loading}
               className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg transition-colors"
             >
-              {loading ? 'מזמין...' : 'אשר הזמנה'}
+              {loading ? 'שולח...' : isRecurring ? 'שלח לאישור' : 'אשר הזמנה'}
             </button>
           </div>
         </form>

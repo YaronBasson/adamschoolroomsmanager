@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import type { Booking, SwitchRequest } from '@/types/domain'
+import type { Booking, SwitchRequest, Profile } from '@/types/domain'
 
 function getResend() { return new Resend(process.env.RESEND_API_KEY) }
 const FROM = 'school-rooms@yourdomain.com'
@@ -134,6 +134,72 @@ export async function sendSwitchAutoCanceled(
       <p>בקשת החלפת החדר מאת <strong>${requesterName}</strong> בוטלה אוטומטית,</p>
       <p>כיוון ש-${requesterName} הזמין/ה חדר אחר.</p>
       <p><a href="${APP_URL}/bookings">לניהול ההזמנות שלך</a></p>
+    `,
+  })
+}
+
+export async function sendEventReminder(
+  event: { title: string; event_date: string | null; responsible_user?: { full_name: string; email: string } | null },
+  admins: Pick<Profile, 'full_name' | 'email'>[]
+): Promise<void> {
+  const recipients = [
+    ...(event.responsible_user ? [event.responsible_user.email] : []),
+    ...admins.map(a => a.email),
+  ].filter(Boolean)
+
+  if (recipients.length === 0) return
+
+  const dateStr = event.event_date
+    ? new Date(event.event_date).toLocaleDateString('he-IL')
+    : 'תאריך לא נקבע'
+
+  await getResend().emails.send({
+    from: FROM,
+    to: [...new Set(recipients)] as string[],
+    subject: `תזכורת: ארוע "${event.title}" ללא חדר מוזמן`,
+    html: `
+      <p>הארוע <strong>${event.title}</strong> מתוכנן ל-${dateStr} ועדיין אין חדר מוזמן עבורו.</p>
+      <p><a href="${APP_URL}/admin/events">לניהול ארועים</a></p>
+    `,
+  })
+}
+
+export async function sendRecurringApproved(
+  userEmail: string,
+  userName: string,
+  roomNumber: string,
+  dayName: string,
+  count: number
+): Promise<void> {
+  await getResend().emails.send({
+    from: FROM,
+    to: userEmail,
+    subject: 'בקשת הזמנה חוזרת אושרה',
+    html: `
+      <p>שלום ${userName},</p>
+      <p>בקשת ההזמנה החוזרת שלך אושרה:</p>
+      <p>חדר <strong>${roomNumber}</strong> — כל יום <strong>${dayName}</strong></p>
+      <p>נוצרו <strong>${count}</strong> הזמנות.</p>
+      <p><a href="${APP_URL}/bookings">לצפייה בהזמנות שלך</a></p>
+    `,
+  })
+}
+
+export async function sendRecurringRejected(
+  userEmail: string,
+  userName: string,
+  roomNumber: string,
+  adminNote: string
+): Promise<void> {
+  await getResend().emails.send({
+    from: FROM,
+    to: userEmail,
+    subject: 'בקשת הזמנה חוזרת נדחתה',
+    html: `
+      <p>שלום ${userName},</p>
+      <p>בקשת ההזמנה החוזרת שלך לחדר <strong>${roomNumber}</strong> נדחתה.</p>
+      ${adminNote ? `<p>הערת מנהל: ${adminNote}</p>` : ''}
+      <p><a href="${APP_URL}/rooms">לחיפוש חדר</a></p>
     `,
   })
 }

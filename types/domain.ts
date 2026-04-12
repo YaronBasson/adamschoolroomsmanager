@@ -95,3 +95,19 @@ export interface RoomSchedule {
   custom_periods: SchedulePeriodEntry[] | null;
   updated_at: string;
 }
+
+export type RecurringStatus = 'pending' | 'approved' | 'rejected';
+
+export interface SchoolEvent {
+  id: string;
+  title: string;
+  event_date: string | null;
+  school_type: 'יסודי' | 'תיכון' | 'שניהם' | null;
+  description: string | null;
+  responsible_user_id: string | null;
+  classes: string[];
+  booking_ids: string[];
+  reminder_sent: boolean;
+  created_by: string | null;
+  created_at: string;
+}
