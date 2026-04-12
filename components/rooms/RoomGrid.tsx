@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Room, Booking } from '@/types/domain'
+import type { Room, Booking, Building } from '@/types/domain'
 import RoomCard from './RoomCard'
 import BookingForm from './BookingForm'
 import SwitchRequestModal from './SwitchRequestModal'
@@ -34,6 +34,7 @@ export default function RoomGrid({ rooms, bookings, date, currentUserId, isAdmin
   const [minCapacity, setMinCapacity] = useState('')
   const [requiredEquipment, setRequiredEquipment] = useState<string[]>([])
   const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'free' | 'occupied'>('all')
+  const [buildingFilter, setBuildingFilter] = useState<Building | 'all'>('all')
   const [filtersOpen, setFiltersOpen] = useState(true)
 
   function handleDateChange(newDate: string) {
@@ -63,6 +64,7 @@ export default function RoomGrid({ rooms, bookings, date, currentUserId, isAdmin
 
   // Apply filters
   const filteredRooms = rooms.filter((room) => {
+    if (buildingFilter !== 'all' && room.building !== buildingFilter) return false
     if (minCapacity && room.capacity < Number(minCapacity)) return false
     if (requiredEquipment.length > 0) {
       const roomEq = room.equipment ?? []
@@ -74,12 +76,14 @@ export default function RoomGrid({ rooms, bookings, date, currentUserId, isAdmin
   })
 
   const activeFilterCount = [
+    buildingFilter !== 'all' ? 1 : 0,
     minCapacity ? 1 : 0,
     requiredEquipment.length,
     availabilityFilter !== 'all' ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
   function clearFilters() {
+    setBuildingFilter('all')
     setMinCapacity('')
     setRequiredEquipment([])
     setAvailabilityFilter('all')
@@ -131,6 +135,27 @@ export default function RoomGrid({ rooms, bookings, date, currentUserId, isAdmin
       {filtersOpen && (
         <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Building */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">בניין</label>
+              <div className="flex gap-2 flex-wrap">
+                {([['all', 'הכל'], ['יסודי', 'יסודי'], ['תיכון', 'תיכון'], ['אלוט', 'אלו"ט']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setBuildingFilter(val)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      buildingFilter === val
+                        ? 'bg-brand-600 border-brand-600 text-white'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Capacity */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">קיבולת מינימלית</label>

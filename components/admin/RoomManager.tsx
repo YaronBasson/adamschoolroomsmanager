@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Room } from '@/types/domain'
+import type { Room, Building } from '@/types/domain'
 
 const DEFAULT_EQUIPMENT_OPTIONS = [
   { value: 'piano', label: 'פסנתר' },
@@ -89,6 +89,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
   const [floor, setFloor] = useState(1)
   const [roomNumber, setRoomNumber] = useState('')
   const [name, setName] = useState('')
+  const [building, setBuilding] = useState<Building>('יסודי')
   const [capacity, setCapacity] = useState(10)
   const [equipment, setEquipment] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -102,7 +103,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
     const res = await fetch('/api/admin/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ floor, room_number: roomNumber, name, capacity, equipment }),
+      body: JSON.stringify({ floor, room_number: roomNumber, name, building, capacity, equipment }),
     })
 
     if (!res.ok) {
@@ -115,6 +116,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
     setFloor(1)
     setRoomNumber('')
     setName('')
+    setBuilding('יסודי')
     setCapacity(10)
     setEquipment([])
     onSave()
@@ -163,15 +165,29 @@ function RoomForm({ onSave }: { onSave: () => void }) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">שם החדר</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="למשל: סטודיו, חדר אוריתמיה, ו1'..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">שם החדר</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="למשל: סטודיו, חדר אוריתמיה, ו1'..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">בניין</label>
+          <select
+            value={building}
+            onChange={(e) => setBuilding(e.target.value as Building)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="יסודי">יסודי</option>
+            <option value="תיכון">תיכון</option>
+            <option value="אלוט">אלו&quot;ט</option>
+          </select>
+        </div>
       </div>
 
       <div>
@@ -194,6 +210,7 @@ function RoomForm({ onSave }: { onSave: () => void }) {
 
 function RoomEditor({ room, onSave }: { room: Room; onSave: () => void }) {
   const [name, setName] = useState(room.name ?? '')
+  const [building, setBuilding] = useState<Building>(room.building ?? 'יסודי')
   const [equipment, setEquipment] = useState<string[]>(room.equipment ?? [])
   const [loading, setLoading] = useState(false)
 
@@ -202,7 +219,7 @@ function RoomEditor({ room, onSave }: { room: Room; onSave: () => void }) {
     await fetch(`/api/admin/rooms/${room.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, equipment }),
+      body: JSON.stringify({ name, building, equipment }),
     })
     setLoading(false)
     onSave()
@@ -210,15 +227,29 @@ function RoomEditor({ room, onSave }: { room: Room; onSave: () => void }) {
 
   return (
     <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-3">
-      <div>
-        <p className="text-xs font-medium text-gray-600 mb-1">שם החדר:</p>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="למשל: סטודיו, חדר אוריתמיה..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-gray-600 mb-1">שם החדר:</p>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="למשל: סטודיו, חדר אוריתמיה..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-600 mb-1">בניין:</p>
+          <select
+            value={building}
+            onChange={(e) => setBuilding(e.target.value as Building)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="יסודי">יסודי</option>
+            <option value="תיכון">תיכון</option>
+            <option value="אלוט">אלו&quot;ט</option>
+          </select>
+        </div>
       </div>
       <div>
         <p className="text-xs font-medium text-gray-600 mb-2">ציוד:</p>
@@ -260,6 +291,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th className="text-right px-4 py-3 font-medium text-gray-700">בניין</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">קומה</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">חדר</th>
               <th className="text-right px-4 py-3 font-medium text-gray-700">שם</th>
@@ -273,6 +305,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
             {rooms.map((room) => (
               <React.Fragment key={room.id}>
                 <tr className={`hover:bg-gray-50 ${!room.is_active ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-3 text-gray-600">{room.building}</td>
                   <td className="px-4 py-3 text-gray-700">{room.floor}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{room.room_number}</td>
                   <td className="px-4 py-3 text-gray-600">{room.name}</td>
@@ -306,7 +339,7 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                 </tr>
                 {editingEquipmentId === room.id && (
                   <tr>
-                    <td colSpan={7} className="p-0">
+                    <td colSpan={8} className="p-0">
                       <RoomEditor room={room} onSave={() => { setEditingEquipmentId(null); router.refresh() }} />
                     </td>
                   </tr>

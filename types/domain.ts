@@ -1,6 +1,7 @@
 export type UserRole = 'user' | 'admin';
 export type BookingStatus = 'active' | 'canceled';
 export type SwitchStatus = 'pending' | 'approved' | 'canceled';
+export type Building = 'יסודי' | 'תיכון' | 'אלוט';
 
 export interface Profile {
   id: string;
@@ -16,6 +17,7 @@ export interface Room {
   floor: number;
   room_number: string;
   name: string;
+  building: Building;
   capacity: number;
   equipment: string[];
   is_active: boolean;
@@ -68,6 +70,7 @@ export interface CreateRoomInput {
   floor: number;
   room_number: string;
   name: string;
+  building: Building;
   capacity: number;
   equipment: string[];
 }
