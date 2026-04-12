@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import type { Room, CreateRoomInput } from '@/types/domain'
+import type { Room, CreateRoomInput, ScheduleTemplate, RoomSchedule } from '@/types/domain'
+import { isOccupiedBySchedule } from '@/services/schedules.service'
 
 export async function getRooms(): Promise<Room[]> {
   const supabase = await createClient()
@@ -57,7 +58,36 @@ export async function getAvailableRooms(
     .order('room_number', { ascending: true })
 
   if (error) throw error
-  return data ?? []
+  let rooms: Room[] = data ?? []
+
+  // Filter rooms occupied by class schedule
+  if (rooms.length > 0) {
+    const { data: schedules } = await supabase
+      .from('room_schedules')
+      .select('*')
+      .in('room_id', rooms.map(r => r.id))
+
+    if (schedules && schedules.length > 0) {
+      const templateIds = [...new Set(
+        (schedules as RoomSchedule[]).filter(s => s.template_id && !s.custom_periods).map(s => s.template_id!)
+      )]
+      let templates: ScheduleTemplate[] = []
+      if (templateIds.length > 0) {
+        const { data: tpls } = await supabase
+          .from('schedule_templates')
+          .select('*')
+          .in('id', templateIds)
+        templates = (tpls ?? []) as ScheduleTemplate[]
+      }
+      const scheduleMap = Object.fromEntries((schedules as RoomSchedule[]).map(s => [s.room_id, s]))
+      rooms = rooms.filter(room => {
+        const sched = scheduleMap[room.id] ?? null
+        return !isOccupiedBySchedule(sched, templates, room.building, startTime, endTime)
+      })
+    }
+  }
+
+  return rooms
 }
 
 export async function createRoom(input: CreateRoomInput): Promise<Room> {

@@ -74,3 +74,24 @@ export interface CreateRoomInput {
   capacity: number;
   equipment: string[];
 }
+
+export interface SchedulePeriodEntry {
+  day: number;    // 0=Sun, 1=Mon, ..., 5=Fri
+  period: number; // 1-10
+}
+
+export interface ScheduleTemplate {
+  id: string;
+  name: string;
+  school_type: 'יסודי' | 'תיכון';
+  periods: SchedulePeriodEntry[];
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RoomSchedule {
+  room_id: string;
+  template_id: string | null;
+  custom_periods: SchedulePeriodEntry[] | null;
+  updated_at: string;
+}

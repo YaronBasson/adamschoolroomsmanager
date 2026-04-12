@@ -98,6 +98,24 @@ export async function sendSwitchApproved(
   )
 }
 
+export async function sendScheduleConflict(booking: Booking, templateName: string): Promise<void> {
+  const email = booking.profile?.email
+  if (!email) return
+
+  await getResend().emails.send({
+    from: FROM,
+    to: email,
+    subject: 'הזמנתך בוטלה — שינוי במערכת שעות',
+    html: `
+      <p>שלום ${booking.profile?.full_name},</p>
+      <p>ההזמנה שלך בוטלה כיוון שמערכת השעות של החדר עודכנה (${templateName})
+      והחדר מסומן כתפוס בשעה זו.</p>
+      <p><strong>${bookingDetails(booking)}</strong></p>
+      <p><a href="${APP_URL}/rooms">לחפש חדר אחר</a></p>
+    `,
+  })
+}
+
 export async function sendSwitchAutoCanceled(
   switchRequest: SwitchRequest,
   targetBooking: Booking
