@@ -270,6 +270,22 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
   const router = useRouter()
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
+
+  async function handleDelete(room: Room) {
+    if (!confirm(`למחוק את חדר ${room.room_number}${room.name ? ` (${room.name})` : ''}?\nהזמנות עתידיות פעילות יבוטלו ובעליהן יקבלו הודעה במייל.`)) return
+    setDeletingId(room.id)
+    setDeleteError('')
+    const res = await fetch(`/api/admin/rooms/${room.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      router.refresh()
+    } else {
+      const data = await res.json()
+      setDeleteError(data.error ?? 'שגיאה במחיקה')
+    }
+    setDeletingId(null)
+  }
 
   async function handleToggleActive(room: Room) {
     setTogglingId(room.id)
@@ -285,6 +301,9 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
   return (
     <div>
       <RoomForm onSave={() => router.refresh()} />
+      {deleteError && (
+        <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+      )}
 
       {/* Desktop table */}
       <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -331,10 +350,16 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleToggleActive(room)} disabled={togglingId === room.id}
-                      className="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 hover:border-gray-500 px-2 py-1 rounded-md disabled:opacity-50 transition-colors">
-                      {room.is_active ? 'השבת' : 'הפעל'}
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => handleToggleActive(room)} disabled={togglingId === room.id}
+                        className="text-xs text-gray-600 hover:text-gray-900 border border-gray-300 hover:border-gray-500 px-2 py-1 rounded-md disabled:opacity-50 transition-colors">
+                        {room.is_active ? 'השבת' : 'הפעל'}
+                      </button>
+                      <button onClick={() => handleDelete(room)} disabled={deletingId === room.id}
+                        className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2 py-1 rounded-md disabled:opacity-50 transition-colors">
+                        מחק
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {editingEquipmentId === room.id && (
@@ -383,6 +408,10 @@ export default function RoomManager({ rooms }: RoomManagerProps) {
                 <button onClick={() => handleToggleActive(room)} disabled={togglingId === room.id}
                   className="flex-1 text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 py-1.5 rounded-lg disabled:opacity-50 transition-colors">
                   {room.is_active ? 'השבת' : 'הפעל'}
+                </button>
+                <button onClick={() => handleDelete(room)} disabled={deletingId === room.id}
+                  className="text-sm text-red-500 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-50 transition-colors">
+                  מחק
                 </button>
               </div>
             </div>

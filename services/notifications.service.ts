@@ -98,6 +98,26 @@ export async function sendSwitchApproved(
   )
 }
 
+export async function sendRoomDeleted(
+  userEmail: string,
+  userName: string,
+  roomLabel: string,
+  startTime: string,
+  endTime: string
+): Promise<void> {
+  await getResend().emails.send({
+    from: FROM,
+    to: userEmail,
+    subject: 'הזמנתך בוטלה — החדר הוסר מהמערכת',
+    html: `
+      <p>שלום ${userName},</p>
+      <p>ההזמנה שלך לחדר <strong>${roomLabel}</strong> בוטלה מאחר שהחדר הוסר מהמערכת.</p>
+      <p>מועד ההזמנה: ${new Date(startTime).toLocaleString('he-IL')} – ${new Date(endTime).toLocaleTimeString('he-IL')}</p>
+      <p><a href="${APP_URL}/rooms">לחפש חדר חלופי</a></p>
+    `,
+  })
+}
+
 export async function sendScheduleConflict(booking: Booking, templateName: string): Promise<void> {
   const email = booking.profile?.email
   if (!email) return
