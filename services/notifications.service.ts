@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 import type { Booking, SwitchRequest, Profile } from '@/types/domain'
 
 function getResend() { return new Resend(process.env.RESEND_API_KEY) }
-const FROM = 'school-rooms@yourdomain.com'
+const FROM = 'בי"ס אדם <onboarding@resend.dev>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
 function bookingDetails(booking: Booking): string {
