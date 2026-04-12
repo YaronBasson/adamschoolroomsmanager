@@ -3,7 +3,12 @@
     "allow": [
       "Bash(cmd.exe:*)",
       "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(mkdir -p \"/mnt/c/Users/yaronb/Code/פרטי/school/app/\\(app\\)/admin/schedules\")",
+      "Bash(mkdir -p \"/mnt/c/Users/yaronb/Code/פרטי/school/app/api/admin/templates/__id__\")",
+      "Bash(mkdir -p \"/mnt/c/Users/yaronb/Code/פרטי/school/app/api/admin/schedules/__roomId__\")",
+      "Read(//mnt/c/Users/yaronb/Code/פרטי/**)",
+      "Bash(npm run:*)"
     ]
   }
 }
