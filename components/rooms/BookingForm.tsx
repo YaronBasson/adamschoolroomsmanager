@@ -12,6 +12,7 @@ interface BookingFormProps {
 }
 
 const CUSTOM = '__custom__'
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי']
 
 export default function BookingForm({ room, defaultStartDate, onClose, onSuccess }: BookingFormProps) {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })
@@ -23,13 +24,15 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isRecurring, setIsRecurring] = useState(false)
-  const [recurringDay, setRecurringDay] = useState<number>(new Date(defaultStartDate).getDay())
+  const [recurringDays, setRecurringDays] = useState<Set<number>>(
+    () => new Set([new Date(defaultStartDate + 'T12:00:00').getDay()])
+  )
 
   // Period selection
   const [schoolType, setSchoolType] = useState<SchoolType>('תיכון')
   const [startPeriodNum, setStartPeriodNum] = useState<number | typeof CUSTOM>(1)
   const [endPeriodNum, setEndPeriodNum] = useState<number | typeof CUSTOM>(2)
-  // Custom time fallback
+  // Custom time fallback (only for non-recurring)
   const [customStartTime, setCustomStartTime] = useState('08:00')
   const [customEndTime, setCustomEndTime] = useState('09:00')
 
@@ -57,7 +60,6 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
     return endPeriodNum === CUSTOM ? customEndTime : (getEndPeriod()?.end ?? '09:00')
   }
 
-  // When school type changes, reset period selection to 1/2 if current numbers are out of range
   function handleSchoolTypeChange(type: SchoolType) {
     setSchoolType(type)
     const newPeriods = PERIODS[type]
@@ -66,10 +68,32 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
     if (typeof endPeriodNum === 'number' && endPeriodNum > maxNum) setEndPeriodNum(2)
   }
 
-  // Keep end date >= start date
   function handleStartDateChange(val: string) {
     setStartDate(val)
     if (val > endDate) setEndDate(val)
+  }
+
+  function toggleRecurringDay(day: number) {
+    setRecurringDays(prev => {
+      const next = new Set(prev)
+      if (next.has(day)) {
+        if (next.size > 1) next.delete(day) // keep at least one day selected
+      } else {
+        next.add(day)
+      }
+      return next
+    })
+  }
+
+  function handleRecurringToggle() {
+    const newVal = !isRecurring
+    setIsRecurring(newVal)
+    if (newVal) {
+      // Entering recurring mode: collapse end date and reset custom times
+      setEndDate(startDate)
+      if (startPeriodNum === CUSTOM) setStartPeriodNum(1)
+      if (endPeriodNum === CUSTOM) setEndPeriodNum(2)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,41 +103,82 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
     const startTime = resolvedStartTime()
     const endTime = resolvedEndTime()
 
-    const start = new Date(`${startDate}T${startTime}:00`)
-    const end = new Date(`${endDate}T${endTime}:00`)
-    const now = new Date()
-
-    if (start < now) {
-      setError('לא ניתן להזמין לתאריך או שעה שעברו')
+    // Validate times (within a single day)
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    if (eh * 60 + em <= sh * 60 + sm) {
+      setError('זמן הסיום חייב להיות אחרי זמן ההתחלה')
       return
     }
 
-    if (end <= start) {
-      setError('זמן הסיום חייב להיות אחרי זמן ההתחלה')
+    // Validate start is not in the past
+    const now = new Date()
+    const startDateObj = new Date(`${startDate}T${startTime}:00`)
+    if (startDateObj < now) {
+      setError('לא ניתן להזמין לתאריך או שעה שעברו')
       return
     }
 
     setLoading(true)
 
+    // --- Recurring: one request per selected day ---
     if (isRecurring) {
-      const body = {
-        room_id: room.id,
-        reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
-        reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
-        day_of_week: recurringDay,
-        start_period: typeof startPeriodNum === 'number' ? startPeriodNum : 1,
-        end_period: typeof endPeriodNum === 'number' ? endPeriodNum : 2,
-        school_type: schoolType,
-        start_date: startDate,
+      const daysList = Array.from(recurringDays)
+      const startPeriod = typeof startPeriodNum === 'number' ? startPeriodNum : 1
+      const endPeriod = typeof endPeriodNum === 'number' ? endPeriodNum : 2
+
+      try {
+        const results = await Promise.all(
+          daysList.map(day =>
+            fetch('/api/recurring-bookings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                room_id: room.id,
+                reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
+                reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
+                day_of_week: day,
+                start_period: startPeriod,
+                end_period: endPeriod,
+                school_type: schoolType,
+                start_date: startDate,
+              }),
+            })
+          )
+        )
+        const failed = results.filter(r => !r.ok)
+        if (failed.length === daysList.length) {
+          const data = await failed[0].json()
+          setError(data.error ?? 'שגיאה ביצירת הבקשה')
+          setLoading(false)
+          return
+        }
+        onSuccess()
+      } catch {
+        setError('שגיאה בשליחת הבקשה')
+        setLoading(false)
       }
-      const res = await fetch('/api/recurring-bookings', {
+      return
+    }
+
+    // --- Single day ---
+    if (startDate === endDate) {
+      const start = new Date(`${startDate}T${startTime}:00`)
+      const end = new Date(`${startDate}T${endTime}:00`)
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          room_id: room.id,
+          reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
+          reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+        }),
       })
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error ?? 'שגיאה ביצירת הבקשה')
+        setError(data.error ?? 'שגיאה ביצירת ההזמנה')
         setLoading(false)
         return
       }
@@ -121,27 +186,32 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
       return
     }
 
-    const body = {
-      room_id: room.id,
-      reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
-      reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-    }
-
-    const res = await fetch('/api/bookings', {
+    // --- Multi-day batch ---
+    const res = await fetch('/api/bookings/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        room_id: room.id,
+        reason_id: selectedReasonId && selectedReasonId !== '__custom_reason__' ? selectedReasonId : undefined,
+        reason_text: selectedReasonId === '__custom_reason__' ? customReason : undefined,
+        start_date: startDate,
+        end_date: endDate,
+        start_time: startTime,
+        end_time: endTime,
+      }),
     })
-
     if (!res.ok) {
       const data = await res.json()
-      setError(data.error ?? 'שגיאה ביצירת ההזמנה')
+      setError(data.error ?? 'שגיאה ביצירת ההזמנות')
       setLoading(false)
       return
     }
-
+    const data = await res.json()
+    if (data.skipped?.length > 0 && data.created === 0) {
+      setError('לא ניתן היה ליצור אף הזמנה — החדר תפוס בכל הימים שנבחרו')
+      setLoading(false)
+      return
+    }
     onSuccess()
   }
 
@@ -150,7 +220,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
             הזמנת חדר {room.room_number}{room.name ? ` — ${room.name}` : ''}
@@ -180,51 +250,11 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
             ))}
           </div>
 
-          {/* Recurring toggle */}
-          <div className="flex items-center gap-3 py-1">
-            <button
-              type="button"
-              onClick={() => setIsRecurring(r => !r)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRecurring ? 'bg-brand-600' : 'bg-gray-200'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRecurring ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-            <span className="text-sm text-gray-700">הזמנה חוזרת (כל שבוע)</span>
-          </div>
-
-          {isRecurring && (
-            <div className="bg-brand-50 border border-brand-200 rounded-xl p-3">
-              <p className="text-xs text-brand-700 mb-2 font-medium">הבקשה תישלח לאישור מנהל — לאחר אישור יווצרו הזמנות שבועיות עד סוף שנת הלימודים.</p>
-              <label className="block text-xs font-medium text-gray-600 mb-1">יום בשבוע</label>
-              <select
-                value={recurringDay}
-                onChange={e => setRecurringDay(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {['ראשון','שני','שלישי','רביעי','חמישי','שישי'].map((name, i) => (
-                  <option key={i} value={i}>{name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Start row */}
-          <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">התחלה</p>
+          {/* Time selection — appears before dates */}
+          <div className="bg-gray-50 rounded-xl p-3 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">שעות</p>
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">תאריך</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  min={today}
-                  onChange={(e) => handleStartDateChange(e.target.value)}
-                  required
-                  className={inputClass}
-                  dir="ltr"
-                />
-              </div>
-              <div className="w-36">
                 <label className="block text-xs font-medium text-gray-600 mb-1">שעת התחלה</label>
                 <select
                   value={startPeriodNum}
@@ -239,7 +269,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
                       {p.label} ({p.start})
                     </option>
                   ))}
-                  <option value={CUSTOM}>שעה מותאמת</option>
+                  {!isRecurring && <option value={CUSTOM}>שעה מותאמת</option>}
                 </select>
                 {startPeriodNum === CUSTOM && (
                   <input
@@ -252,26 +282,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
                   />
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* End row */}
-          <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">סיום</p>
-            <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">תאריך</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                  className={inputClass}
-                  dir="ltr"
-                />
-              </div>
-              <div className="w-36">
                 <label className="block text-xs font-medium text-gray-600 mb-1">שעת סיום</label>
                 <select
                   value={endPeriodNum}
@@ -286,7 +297,7 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
                       {p.label} ({p.end})
                     </option>
                   ))}
-                  <option value={CUSTOM}>שעה מותאמת</option>
+                  {!isRecurring && <option value={CUSTOM}>שעה מותאמת</option>}
                 </select>
                 {endPeriodNum === CUSTOM && (
                   <input
@@ -302,10 +313,94 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
             </div>
           </div>
 
-          {isMultiDay && (
-            <p className="text-xs text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2">
-              הזמנה מרובת ימים: {startDate} עד {endDate}
-            </p>
+          {/* Recurring toggle */}
+          <div className="flex items-center gap-3 py-1">
+            <button
+              type="button"
+              onClick={handleRecurringToggle}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isRecurring ? 'bg-brand-600' : 'bg-gray-200'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isRecurring ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-sm text-gray-700">הזמנה חוזרת (כל שבוע)</span>
+          </div>
+
+          {/* Recurring ON: day checkboxes + start date */}
+          {isRecurring && (
+            <div className="bg-brand-50 border border-brand-200 rounded-xl p-3 space-y-3">
+              <p className="text-xs text-brand-700 font-medium">
+                הבקשה תישלח לאישור מנהל — לאחר אישור יווצרו הזמנות שבועיות עד סוף שנת הלימודים.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">ימי חזרה</label>
+                <div className="flex gap-2 flex-wrap">
+                  {DAY_NAMES.map((name, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleRecurringDay(i)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                        recurringDays.has(i)
+                          ? 'bg-brand-600 text-white border-brand-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">מתאריך</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  min={today}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                  className={inputClass}
+                  dir="ltr"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Regular: date range */}
+          {!isRecurring && (
+            <div className="bg-gray-50 rounded-xl p-3 space-y-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">תאריכים</p>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">מתאריך</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    min={today}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
+                    required
+                    className={inputClass}
+                    dir="ltr"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">עד תאריך</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                    className={inputClass}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              {isMultiDay && (
+                <p className="text-xs text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2">
+                  יווצרו הזמנות נפרדות לכל יום בין {startDate} ל-{endDate} באותן שעות
+                </p>
+              )}
+            </div>
           )}
 
           {/* Reason */}
