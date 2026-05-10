@@ -303,15 +303,18 @@ export default function RoomOverview({
                     {building === 'אלוט' ? 'אלו"ט' : building}
                   </td>
                 </tr>
-                {rows.map(({ room, cells }) => (
-                  <tr key={room.id} className="hover:bg-gray-50">
+                {rows.map(({ room, cells }, idx) => {
+                  const prevFloor = idx > 0 ? rows[idx - 1].room.floor : null
+                  const floorChanged = prevFloor !== null && prevFloor !== room.floor
+                  return (
+                  <tr
+                    key={room.id}
+                    className={`hover:bg-gray-50 ${floorChanged ? 'border-t-2 border-t-gray-300' : ''}`}
+                  >
                     <td
-                      className="text-right text-gray-700 px-2 border-b border-gray-100 truncate"
+                      className={`text-right text-gray-700 px-2 border-b border-gray-100 truncate ${floorChanged ? 'border-t-2 border-t-gray-300' : ''}`}
                       style={{ maxWidth: 200, height: 26 }}
                     >
-                      <span className="text-gray-400 text-[10px] ml-1">
-                        ק{room.floor}
-                      </span>
                       <span className="font-medium">{room.room_number}</span>
                       {room.name && (
                         <span className="text-gray-500"> · {room.name}</span>
@@ -358,7 +361,8 @@ export default function RoomOverview({
                       )
                     })}
                   </tr>
-                ))}
+                  )
+                })}
               </Fragment>
             ))}
           </tbody>
