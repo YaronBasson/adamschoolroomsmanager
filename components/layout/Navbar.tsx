@@ -22,10 +22,14 @@ export default function Navbar({ profile }: NavbarProps) {
   }
 
   const links = [
-    { href: '/rooms', label: 'חדרים' },
+    { href: '/rooms', label: 'חדרים', exact: true },
+    { href: '/rooms/overview', label: 'תצוגה כללית' },
     { href: '/bookings', label: 'ההזמנות שלי' },
     ...(profile.role === 'admin' ? [{ href: '/admin/users', label: 'ניהול' }] : []),
   ]
+
+  const isActive = (link: { href: string; exact?: boolean }): boolean =>
+    link.exact ? pathname === link.href : pathname.startsWith(link.href)
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-20">
@@ -43,7 +47,7 @@ export default function Navbar({ profile }: NavbarProps) {
                   key={link.href}
                   href={link.href}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    pathname.startsWith(link.href)
+                    isActive(link)
                       ? 'bg-brand-50 text-brand-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
@@ -99,7 +103,7 @@ export default function Navbar({ profile }: NavbarProps) {
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  pathname.startsWith(link.href)
+                  isActive(link)
                     ? 'bg-brand-50 text-brand-700'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}

@@ -8,7 +8,12 @@
       "Bash(mkdir -p \"/mnt/c/Users/yaronb/Code/פרטי/school/app/api/admin/templates/__id__\")",
       "Bash(mkdir -p \"/mnt/c/Users/yaronb/Code/פרטי/school/app/api/admin/schedules/__roomId__\")",
       "Read(//mnt/c/Users/yaronb/Code/פרטי/**)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(pushd \"C:\\\\Users\\\\yaronb\\\\Code\\\\פרטי\\\\school\")",
+      "Bash(npx tsc *)",
+      "Bash(popd)"
     ]
   }
 }

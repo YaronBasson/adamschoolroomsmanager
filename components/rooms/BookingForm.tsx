@@ -7,6 +7,9 @@ import { PERIODS, type SchoolType, type Period } from '@/lib/school-periods'
 interface BookingFormProps {
   room: Room
   defaultStartDate: string
+  defaultSchoolType?: SchoolType
+  defaultStartPeriod?: number
+  defaultEndPeriod?: number
   onClose: () => void
   onSuccess: () => void
 }
@@ -14,7 +17,15 @@ interface BookingFormProps {
 const CUSTOM = '__custom__'
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי']
 
-export default function BookingForm({ room, defaultStartDate, onClose, onSuccess }: BookingFormProps) {
+export default function BookingForm({
+  room,
+  defaultStartDate,
+  defaultSchoolType,
+  defaultStartPeriod,
+  defaultEndPeriod,
+  onClose,
+  onSuccess,
+}: BookingFormProps) {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })
   const [reasons, setReasons] = useState<BookingReason[]>([])
   const [selectedReasonId, setSelectedReasonId] = useState('')
@@ -29,9 +40,11 @@ export default function BookingForm({ room, defaultStartDate, onClose, onSuccess
   )
 
   // Period selection
-  const [schoolType, setSchoolType] = useState<SchoolType>('תיכון')
-  const [startPeriodNum, setStartPeriodNum] = useState<number | typeof CUSTOM>(1)
-  const [endPeriodNum, setEndPeriodNum] = useState<number | typeof CUSTOM>(2)
+  const [schoolType, setSchoolType] = useState<SchoolType>(
+    defaultSchoolType ?? (room.building === 'תיכון' ? 'תיכון' : 'יסודי')
+  )
+  const [startPeriodNum, setStartPeriodNum] = useState<number | typeof CUSTOM>(defaultStartPeriod ?? 1)
+  const [endPeriodNum, setEndPeriodNum] = useState<number | typeof CUSTOM>(defaultEndPeriod ?? 2)
   // Custom time fallback (only for non-recurring)
   const [customStartTime, setCustomStartTime] = useState('08:00')
   const [customEndTime, setCustomEndTime] = useState('09:00')
