@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUser } from '@/services/auth.service'
 import { createSwitchRequest, getBookingById } from '@/services/bookings.service'
 import { sendSwitchRequest } from '@/services/notifications.service'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function POST(request: Request) {
   try {
@@ -36,6 +37,20 @@ export async function POST(request: Request) {
       target_booking: targetBooking,
     }
     await sendSwitchRequest(srWithBookings, targetBooking).catch(console.error)
+
+    const targetOwner = targetBooking.profile?.full_name ?? 'משתמש'
+    logActivity({
+      actor: profile,
+      action: 'switch.requested',
+      entityType: 'switch_request',
+      entityId: switchRequest.id,
+      summary: `בקשת החלפת חדר עם ${targetOwner}`,
+      details: {
+        requester_booking_id,
+        target_booking_id,
+        target_user_id: targetBooking.user_id,
+      },
+    })
 
     return NextResponse.json({ switchRequest }, { status: 201 })
   } catch (err: unknown) {

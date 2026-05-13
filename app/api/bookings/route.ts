@@ -9,6 +9,7 @@ import {
   sendBookingConfirmed,
   sendSwitchAutoCanceled,
 } from '@/services/notifications.service'
+import { logActivity } from '@/services/activity-log.service'
 import type { CreateBookingInput } from '@/types/domain'
 
 export async function GET() {
@@ -60,6 +61,25 @@ export async function POST(request: Request) {
         await sendSwitchAutoCanceled(sw, sw.target_booking).catch(console.error)
       }
     }
+
+    const roomLabel = booking.room
+      ? `חדר ${booking.room.room_number}${booking.room.name ? ` (${booking.room.name})` : ''}`
+      : 'חדר'
+    const when = new Date(booking.start_time).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })
+    logActivity({
+      actor: profile,
+      action: 'booking.created',
+      entityType: 'booking',
+      entityId: booking.id,
+      summary: `יצירת הזמנה: ${roomLabel} בתאריך ${when}`,
+      details: {
+        room_id: booking.room_id,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        reason_id: booking.reason_id,
+        reason_text: booking.reason_text,
+      },
+    })
 
     return NextResponse.json({ booking }, { status: 201 })
   } catch (err: unknown) {

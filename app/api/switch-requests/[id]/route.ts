@@ -7,6 +7,7 @@ import {
 } from '@/services/bookings.service'
 import { sendSwitchApproved } from '@/services/notifications.service'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function PATCH(
   request: Request,
@@ -49,6 +50,18 @@ export async function PATCH(
       if (requesterBooking && targetBooking) {
         await sendSwitchApproved(requesterBooking, targetBooking).catch(console.error)
       }
+      const requesterName = requesterBooking?.profile?.full_name ?? 'משתמש'
+      logActivity({
+        actor: profile,
+        action: 'switch.approved',
+        entityType: 'switch_request',
+        entityId: id,
+        summary: `אישור בקשת החלפת חדר עם ${requesterName}`,
+        details: {
+          requester_booking_id: sr.requester_booking_id,
+          target_booking_id: sr.target_booking_id,
+        },
+      })
     } else {
       const [requesterBooking, targetBooking] = await Promise.all([
         getBookingById(sr.requester_booking_id),
@@ -62,6 +75,17 @@ export async function PATCH(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       await cancelSwitchRequest(id)
+      logActivity({
+        actor: profile,
+        action: 'switch.canceled',
+        entityType: 'switch_request',
+        entityId: id,
+        summary: `ביטול בקשת החלפת חדר`,
+        details: {
+          requester_booking_id: sr.requester_booking_id,
+          target_booking_id: sr.target_booking_id,
+        },
+      })
     }
 
     return NextResponse.json({ success: true })

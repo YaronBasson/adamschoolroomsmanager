@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUser } from '@/services/auth.service'
 import { createBooking, autoCancelSwitchesForUser } from '@/services/bookings.service'
 import { sendBookingConfirmed } from '@/services/notifications.service'
+import { logActivity } from '@/services/activity-log.service'
 
 function getDatesInRange(startDate: string, endDate: string): string[] {
   const dates: string[] = []
@@ -67,6 +68,25 @@ export async function POST(request: Request) {
       } catch {
         skipped.push(date)
       }
+    }
+
+    if (created > 0) {
+      logActivity({
+        actor: profile,
+        action: 'booking.batch_created',
+        entityType: 'booking',
+        entityId: room_id,
+        summary: `יצירת ${created} הזמנות (${start_date} עד ${end_date}, ${start_time}–${end_time})`,
+        details: {
+          room_id,
+          start_date,
+          end_date,
+          start_time,
+          end_time,
+          created,
+          skipped,
+        },
+      })
     }
 
     return NextResponse.json({ created, skipped }, { status: 201 })

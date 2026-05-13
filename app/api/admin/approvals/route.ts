@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/services/auth.service'
 import { getPendingRequests, approveRequest, rejectRequest } from '@/services/recurring.service'
 import { sendRecurringApproved, sendRecurringRejected } from '@/services/notifications.service'
+import { logActivity } from '@/services/activity-log.service'
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
     if (action === 'approve') {
       const result = await approveRequest(id, admin.id)
 
+      let requesterName = 'משתמש'
+      let roomLabel = ''
       // Send notification (best effort)
       try {
         const { createServiceClient } = await import('@/lib/supabase/server')
@@ -35,6 +38,8 @@ export async function POST(request: Request) {
           .select('*, user:profiles!user_id(full_name, email), room:rooms!room_id(room_number)')
           .eq('id', id)
           .single()
+        if (req?.user) requesterName = req.user.full_name ?? requesterName
+        if (req?.room) roomLabel = req.room.room_number ?? ''
         if (req?.user && req?.room) {
           await sendRecurringApproved(
             req.user.email,
@@ -46,12 +51,22 @@ export async function POST(request: Request) {
         }
       } catch { /* ignore */ }
 
+      logActivity({
+        actor: admin,
+        action: 'admin.recurring.approved',
+        entityType: 'recurring_booking_request',
+        entityId: id,
+        summary: `אישור בקשה קבועה של ${requesterName}${roomLabel ? ` (חדר ${roomLabel})` : ''} — ${result.created} הזמנות נוצרו`,
+        details: { created: result.created },
+      })
+
       return NextResponse.json({ success: true, ...result })
     }
 
     if (action === 'reject') {
       await rejectRequest(id, admin.id, admin_note ?? '')
 
+      let requesterName = 'משתמש'
       try {
         const { createServiceClient } = await import('@/lib/supabase/server')
         const supabase = createServiceClient()
@@ -60,10 +75,20 @@ export async function POST(request: Request) {
           .select('*, user:profiles!user_id(full_name, email), room:rooms!room_id(room_number)')
           .eq('id', id)
           .single()
+        if (req?.user) requesterName = req.user.full_name ?? requesterName
         if (req?.user && req?.room) {
           await sendRecurringRejected(req.user.email, req.user.full_name, req.room.room_number, admin_note ?? '')
         }
       } catch { /* ignore */ }
+
+      logActivity({
+        actor: admin,
+        action: 'admin.recurring.rejected',
+        entityType: 'recurring_booking_request',
+        entityId: id,
+        summary: `דחיית בקשה קבועה של ${requesterName}`,
+        details: { admin_note: admin_note ?? null },
+      })
 
       return NextResponse.json({ success: true })
     }

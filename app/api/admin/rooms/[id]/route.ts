@@ -3,16 +3,25 @@ import { requireAdmin } from '@/services/auth.service'
 import { updateRoom } from '@/services/rooms.service'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendRoomDeleted } from '@/services/notifications.service'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const { id } = await params
     const body = await request.json()
     const room = await updateRoom(id, body)
+    logActivity({
+      actor: admin,
+      action: 'admin.room.updated',
+      entityType: 'room',
+      entityId: id,
+      summary: `עדכון חדר: ${room.room_number}${room.name ? ` (${room.name})` : ''}`,
+      details: { changes: body },
+    })
     return NextResponse.json({ room })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error'
@@ -26,9 +35,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const { id } = await params
     const supabase = createServiceClient()
+
+    // Fetch room label before deletion (for the activity log)
+    const { data: roomRow } = await supabase
+      .from('rooms')
+      .select('room_number, name')
+      .eq('id', id)
+      .single()
+    const roomLabel = roomRow
+      ? `${roomRow.room_number}${roomRow.name ? ` (${roomRow.name})` : ''}`
+      : id
 
     // Fetch active future bookings + user emails before deletion
     const { data: activeBookings } = await supabase
@@ -55,6 +74,15 @@ export async function DELETE(
       })
       await Promise.all(notifications)
     }
+
+    logActivity({
+      actor: admin,
+      action: 'admin.room.deleted',
+      entityType: 'room',
+      entityId: id,
+      summary: `מחיקת חדר: ${roomLabel}`,
+      details: { notified: activeBookings?.length ?? 0 },
+    })
 
     return NextResponse.json({ success: true, notified: activeBookings?.length ?? 0 })
   } catch (err: unknown) {

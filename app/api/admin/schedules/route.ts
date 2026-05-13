@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/services/auth.service'
 import { getAllRoomSchedules, setRoomTemplate } from '@/services/schedules.service'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function GET() {
   try {
@@ -16,12 +17,20 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
     const { room_id, template_id } = await request.json()
     if (!room_id || !template_id) {
       return NextResponse.json({ error: 'room_id and template_id required' }, { status: 400 })
     }
     await setRoomTemplate(room_id, template_id)
+    logActivity({
+      actor: admin,
+      action: 'admin.schedule.set',
+      entityType: 'room_schedule',
+      entityId: room_id,
+      summary: `שיוך תבנית מערכת לחדר`,
+      details: { room_id, template_id },
+    })
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error'

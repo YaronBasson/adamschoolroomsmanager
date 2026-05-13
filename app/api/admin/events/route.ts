@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/services/auth.service'
 import { getAllEvents, createEvent } from '@/services/events.service'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function GET() {
   try {
@@ -20,6 +21,14 @@ export async function POST(request: Request) {
     const body = await request.json()
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 })
     const event = await createEvent(body, admin.id)
+    logActivity({
+      actor: admin,
+      action: 'admin.event.created',
+      entityType: 'school_event',
+      entityId: event.id,
+      summary: `יצירת אירוע: ${event.title}`,
+      details: { event_date: event.event_date, school_type: event.school_type },
+    })
     return NextResponse.json({ event })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error'

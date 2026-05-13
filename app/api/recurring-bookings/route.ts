@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireApprovedUser } from '@/services/auth.service'
 import { createRecurringRequest } from '@/services/recurring.service'
+import { logActivity } from '@/services/activity-log.service'
+
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
 export async function POST(request: Request) {
   try {
@@ -27,6 +30,23 @@ export async function POST(request: Request) {
       school_type,
       start_date,
       end_date,
+    })
+
+    logActivity({
+      actor: user,
+      action: 'recurring.requested',
+      entityType: 'recurring_booking_request',
+      entityId: req.id,
+      summary: `בקשת הזמנה קבועה: יום ${DAY_NAMES[day_of_week] ?? day_of_week}, שיעורים ${start_period}–${end_period}`,
+      details: {
+        room_id,
+        day_of_week,
+        start_period,
+        end_period,
+        school_type,
+        start_date,
+        end_date,
+      },
     })
 
     return NextResponse.json({ request: req }, { status: 201 })

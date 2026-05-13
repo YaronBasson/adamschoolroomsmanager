@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/services/auth.service'
 import { listBackups, createBackup } from '@/services/backup.service'
+import { logActivity } from '@/services/activity-log.service'
 
 export async function GET() {
   try {
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
     const { label } = await request.json()
     if (!label?.trim()) return NextResponse.json({ error: 'Label required' }, { status: 400 })
     const backup = await createBackup(label.trim(), admin.id)
+    logActivity({
+      actor: admin,
+      action: 'admin.backup.created',
+      entityType: 'backup',
+      entityId: backup.id,
+      summary: `יצירת גיבוי: ${backup.label}`,
+    })
     return NextResponse.json({ backup })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Server error'
