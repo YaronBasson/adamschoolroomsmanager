@@ -88,7 +88,7 @@ export async function createBackup(label: string, userId: string): Promise<Backu
   const { data, error } = await supabase
     .from('backups')
     .insert({ label, created_by: userId, data: snapshot })
-    .select('id, created_at, created_by, label')
+    .select('id, created_at, created_by, label, creator:profiles(full_name, email)')
     .single()
   if (error) throw error
   return data as BackupRecord
